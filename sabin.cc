@@ -58,6 +58,8 @@ double hole1(double &u, double &v, Point3D &point, Vector3D &du, Vector3D &dv) {
   double radius = 0.1;
   auto deviation = p - center;
   bool inside = deviation.norm() < radius;
+  if (deviation.norm() < 1.0e-5)
+    deviation = Vector2D(1, 0); // does not matter, we are in the center, but avoid NaNs
   deviation.normalize();
   auto q = center + deviation * radius;
   u = q[0];
@@ -76,6 +78,8 @@ double hole2(double &u, double &v, Point3D &point, Vector3D &du, Vector3D &dv) {
   double radius = 0.1;
   auto deviation = p - center;
   bool inside = deviation.norm() < radius;
+  if (deviation.norm() < 1.0e-5)
+    deviation = Vector2D(1, 0); // does not matter, we are in the center, but avoid NaNs
   deviation.normalize();
   auto q = center + deviation * radius;
   u = q[0];
