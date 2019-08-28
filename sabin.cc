@@ -6,6 +6,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <set>
 
 #include "solver.hh"
 
@@ -77,40 +78,52 @@ double hole2(double &u, double &v, Point3D &point, Vector3D &cross_derivative) {
 
 int main() {
   std::vector<Boundary> boundaries = { b1, b2, b3, b4 }, holes = { hole1, hole2 };
+
+  std::set<size_t> hole_indices;
+  auto is_in_hole = [&](size_t i) { return hole_indices.find(i) != hole_indices.end(); };
   boundaries.insert(boundaries.end(), holes.begin(), holes.end());
+
   std::ofstream f("/tmp/sabin.obj");
+  size_t index = 0;
   for (size_t i = 0; i <= resolution; ++i) {
     double u = (double)i / resolution;
-    for (size_t j = 0; j <= resolution; ++j) {
+    for (size_t j = 0; j <= resolution; ++j, ++index) {
       double v = (double)j / resolution;
-      if (false) {
-        // Heuristic handling of holes
-        bool in_hole = false;
-        for (const auto &hole : { hole1, hole2 }) {
-          double u1 = u, v1 = v;
-          Point3D p;
-          Vector3D t;
-          if (hole(u1, v1, p, t) < 0) {
-            in_hole = true;
-            f << "v " << p[0] << ' ' << p[1] << ' ' << p[2] << std::endl;
-            break;
-          }
+
+      // Heuristic handling of holes
+      bool in_hole = false;
+      for (const auto &hole : { hole1, hole2 }) {
+        double u1 = u, v1 = v;
+        Point3D p;
+        Vector3D t;
+        if (hole(u1, v1, p, t) < 0) {
+          in_hole = true;
+          hole_indices.insert(index);
+          f << "v " << p[0] << ' ' << p[1] << ' ' << p[2] << std::endl;
+          break;
         }
-        if (in_hole)
-          continue;
       }
+      if (in_hole)
+        continue;
+
       auto p = evalPatch(boundaries, u, v).first;
       f << "v " << p[0] << ' ' << p[1] << ' ' << p[2] << std::endl;
     }
   }
   for (size_t i = 0; i < resolution; ++i)
     for (size_t j = 0; j < resolution; ++j) {
-      size_t index = i * (resolution + 1) + j + 1;
-      f << "f " << index
-        << ' '  << index + 1
-        << ' '  << index + resolution + 2 << std::endl;
-      f << "f " << index
-        << ' '  << index + resolution + 2
-        << ' '  << index + resolution + 1 << std::endl;
+      index = i * (resolution + 1) + j + 1;
+      if (!is_in_hole(index) || 
+          !is_in_hole(index + 1) ||
+          !is_in_hole(index + resolution + 2))
+        f << "f " << index
+          << ' '  << index + 1
+          << ' '  << index + resolution + 2 << std::endl;
+      if (!is_in_hole(index) ||
+          !is_in_hole(index + resolution + 2) ||
+          !is_in_hole(index + resolution + 1))
+        f << "f " << index
+          << ' '  << index + resolution + 2
+          << ' '  << index + resolution + 1 << std::endl;
     }
 }
