@@ -9,13 +9,14 @@ evalPatch(const std::vector<Boundary> &boundaries, double u, double v) {
   Eigen::Matrix3d A = Eigen::Matrix3d::Zero(), b = Eigen::Matrix3d::Zero();
   double ui, vi, di;
   Point3D Pi;
-  Vector3D Ti;
+  Vector3D Ti, du, dv;
 
   for (const auto &boundary : boundaries) {
     ui = u; vi = v;
-    di = boundary(ui, vi, Pi, Ti);
+    di = boundary(ui, vi, Pi, du, dv);
     if (di < domain_tolerance)
-      return { Pi, Vector3D(0, 0, 0) }; // kutykurutty
+      return { Pi, (du ^ dv).normalize() };
+    Ti = du * (u - ui) + dv * (v - vi); // = cross derivative scaled by di
 
     double denom = std::pow(di, -3);
     A(0, 0) += 2 * denom;
@@ -29,9 +30,9 @@ evalPatch(const std::vector<Boundary> &boundaries, double u, double v) {
     A(2, 2) += 2 * std::pow(v - vi, 2) * denom;
 
     for (size_t k = 0; k < 3; ++k) {
-      b(0, k) += (2 * Pi[k] + di * Ti[k]) * denom;
-      b(1, k) += (3 * (u - ui) * Pi[k] + (u - ui) * di * Ti[k]) * denom;
-      b(2, k) += (3 * (v - vi) * Pi[k] + (v - vi) * di * Ti[k]) * denom;
+      b(0, k) += (2 * Pi[k] + Ti[k]) * denom;
+      b(1, k) += (3 * (u - ui) * Pi[k] + (u - ui) * Ti[k]) * denom;
+      b(2, k) += (3 * (v - vi) * Pi[k] + (v - vi) * Ti[k]) * denom;
     }
   }
 
