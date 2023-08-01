@@ -12,7 +12,11 @@
 
 // Global parameters
 const double multiplier = 30.0;
-const size_t resolution = 100;
+const size_t resolution = 120;
+const size_t u_mod = 4;
+const size_t v_mod = 4;
+const bool export_patch = true;
+const bool export_isolines = true;
 
 
 // Setup boundaries as in the paper (or at least similarly)
@@ -133,20 +137,48 @@ int main() {
       f << "vn " << n[0] << ' ' << n[1] << ' ' << n[2] << std::endl;
     }
   }
-  for (size_t i = 0; i < resolution; ++i)
-    for (size_t j = 0; j < resolution; ++j) {
-      index = i * (resolution + 1) + j + 1;
-      if (!is_in_hole(index) || 
-          !is_in_hole(index + resolution + 2) ||
-          !is_in_hole(index + 1))
-        f << "f " << index << "//" << index
-          << ' '  << index + resolution + 2 << "//" << index + resolution + 2
-          << ' '  << index + 1 << "//" << index + 1 << std::endl;
-      if (!is_in_hole(index) ||
-          !is_in_hole(index + resolution + 1) ||
-          !is_in_hole(index + resolution + 2))
-        f << "f " << index << "//" << index
-          << ' '  << index + resolution + 1 << "//" << index + resolution + 1
-          << ' '  << index + resolution + 2 << "//" << index + resolution + 2 << std::endl;
-    }
+  if (export_patch) {
+    for (size_t i = 0; i < resolution; ++i)
+      for (size_t j = 0; j < resolution; ++j) {
+        index = i * (resolution + 1) + j + 1;
+        if (!is_in_hole(index) || 
+            !is_in_hole(index + resolution + 2) ||
+            !is_in_hole(index + 1))
+          f << "f " << index << "//" << index
+            << ' '  << index + resolution + 2 << "//" << index + resolution + 2
+            << ' '  << index + 1 << "//" << index + 1 << std::endl;
+        if (!is_in_hole(index) ||
+            !is_in_hole(index + resolution + 1) ||
+            !is_in_hole(index + resolution + 2))
+          f << "f " << index << "//" << index
+            << ' '  << index + resolution + 1 << "//" << index + resolution + 1
+            << ' '  << index + resolution + 2 << "//" << index + resolution + 2 << std::endl;
+      }
+  }
+  if (export_isolines) {
+    for (size_t k = 0; k < 2; ++k)
+      for (size_t i = 0; i <= resolution; ++i) {
+        bool start = true;
+        size_t starting_index = 0;
+        for (size_t j = 0; j <= resolution; ++j) {
+          index = k ? j * (resolution + 1) + i + 1 : i * (resolution + 1) + j + 1;
+          if (is_in_hole(index)) {
+            if (!start)
+              f << ' ' << index << std::endl;
+            start = true;
+          } else if (start) {
+            starting_index = index;
+            start = false;
+          } else if ((k && i % v_mod == 0) || (!k && i % u_mod == 0)) {
+            if (starting_index > 0) {
+              f << "l " << starting_index;
+              starting_index = 0;
+            }
+            f << ' ' << index;
+          }
+        }
+        if (!start)
+          f << std::endl;
+      }
+  }
 }
